@@ -12,7 +12,6 @@ async def main():
     bot = Bot(BOT_TOKEN, parse_mode="HTML")
     dp = Dispatcher()
     dp.include_router(router)
-    # Поднимем планировщик после старта бота
     setup_jobs(bot)
     print("Bot started.")
     await dp.start_polling(bot)

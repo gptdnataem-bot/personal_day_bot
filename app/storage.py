@@ -19,6 +19,24 @@ def init_db():
             )
             '''
         )
+        cur.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                user_id INTEGER,
+                query TEXT,
+                PRIMARY KEY (user_id, query)
+            )
+            '''
+        )
+        cur.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS sent (
+                user_id INTEGER,
+                url_hash TEXT,
+                PRIMARY KEY (user_id, url_hash)
+            )
+            '''
+        )
         con.commit()
 
 def upsert_user(user_id: int):
@@ -71,3 +89,38 @@ def all_users():
             "topics": r[6],
         })
     return users
+
+def add_subscription(user_id:int, query:str):
+    query = (query or "").strip()
+    if not query: return False
+    with sqlite3.connect(DB_PATH) as con:
+        cur = con.cursor()
+        cur.execute("INSERT OR IGNORE INTO subscriptions (user_id, query) VALUES (?,?)", (user_id, query))
+        con.commit()
+    return True
+
+def remove_subscription(user_id:int, query:str):
+    with sqlite3.connect(DB_PATH) as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM subscriptions WHERE user_id=? AND query=?", (user_id, query))
+        con.commit()
+
+def list_subscriptions(user_id:int):
+    with sqlite3.connect(DB_PATH) as con:
+        cur = con.cursor()
+        cur.execute("SELECT query FROM subscriptions WHERE user_id=?", (user_id,))
+        rows = cur.fetchall()
+    return [r[0] for r in rows]
+
+def mark_sent(user_id:int, url_hash:str):
+    with sqlite3.connect(DB_PATH) as con:
+        cur = con.cursor()
+        cur.execute("INSERT OR IGNORE INTO sent (user_id, url_hash) VALUES (?,?)", (user_id, url_hash))
+        con.commit()
+
+def was_sent(user_id:int, url_hash:str)->bool:
+    with sqlite3.connect(DB_PATH) as con:
+        cur = con.cursor()
+        cur.execute("SELECT 1 FROM sent WHERE user_id=? AND url_hash=?", (user_id, url_hash))
+        row = cur.fetchone()
+    return row is not None
